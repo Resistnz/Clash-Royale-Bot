@@ -2,7 +2,7 @@ import os
 import pygame
 from pygame import gfxdraw
 
-#SHOW_FPS = True
+SHOW_FPS = False
 
 pygame.init()
 
@@ -23,20 +23,31 @@ class GUI:
         self.shadowImage = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "shadow.png"), (0.4, 0.28))
         self.shadowImage.set_alpha(128)
 
-        self.healthbarImage = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "healthbar-blue.png"), 1.6)
+        self.healthbarBlue = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "healthbar-blue.png"), 1.6)
+        self.healthbarRed = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "healthbar-red.png"), (1.75, 1.61))
+
+        self.destroyedTower = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "destroyed.png"), 2.3)
 
         self.imagesByTroop = {
-            "GIANT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "giant-walk.png"), 0.6)
+            "GIANT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "giant-walk.png"), 0.6),
+            "SKELETON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "skeleton.png"), 2)
         }
 
         self.fpsHistory = []
 
     # Return False if UI has terminated this frame
-    def Tick(self, dt, troops, projectiles) -> bool:
+    def Tick(self, dt, troops, projectiles, towers) -> bool:
         self.win.blit(self.bgImage, (-415, 0))
 
         # Fill with transparent
         self.surfaceHD.fill((0, 0, 0, 0))
+
+        for tower in towers:
+            if tower.dead:
+                self.surfaceHD.blit(self.destroyedTower, (tower.x * 4 - 130, tower.y * 4 - 60))
+                continue
+
+            self.DrawHealthBar(tower.x * 4 - 120, tower.y * 4 + 90, tower)
 
         for t in troops:
             self.DrawTroop(t)
@@ -79,12 +90,33 @@ class GUI:
         pygame.display.flip()
 
         return True
+    
+    def DrawHealthBar(self, drawX, drawY, owner) -> None:
+        maxWidth = 100
+
+        barW = int(maxWidth * (owner.health / owner.maxHealth))
+        barX = drawX + 80
+        barY = drawY
+
+        colour = (52, 146, 235) # Blue
+        drawImg = self.healthbarBlue
+
+        if not owner.owner.isFocused:
+            barY -= 8
+            barX += 4
+
+            colour = (217, 33, 51) # Red
+            drawImg = self.healthbarRed
+
+        self.surfaceHD.blit(drawImg, (drawX + 20, drawY - 30))
+
+        pygame.draw.rect(self.surfaceHD, (50, 50, 60), (barX, barY, maxWidth, 16), border_radius=3)
+        pygame.draw.rect(self.surfaceHD, colour, (barX, barY, barW, 16), border_radius=3)
 
     def DrawTroop(self, troop) -> None:
         troopImg = self.imagesByTroop[troop.troopType.name]
 
-        if troop.direction == -1:
-            troopImg = pygame.transform.flip(troopImg, False, True)
+        troopImg = pygame.transform.rotate(troopImg, troop.direction - 90)
 
         width = troopImg.get_width()
         height = troopImg.get_height()
@@ -92,19 +124,19 @@ class GUI:
         drawX = troop.x * 4 - width // 2
         drawY = troop.y * 4 - height // 2
 
-        self.surfaceHD.blit(self.shadowImage, (drawX, drawY + 60))
+        scaledShadow = pygame.transform.smoothscale_by(self.shadowImage, width/270)
+
+        self.surfaceHD.blit(scaledShadow, (drawX, drawY + 60))
         self.surfaceHD.blit(troopImg, (drawX, drawY))
 
-        self.surfaceHD.blit(self.healthbarImage, (drawX + 20, drawY - 30))
-
-        maxWidth = 100
-
-        barW = int(maxWidth * (troop.health / troop.maxHealth))
-        barX = drawX + 80
-        barY = drawY
-
-        pygame.draw.rect(self.surfaceHD, (50, 50, 60), (barX, barY, maxWidth, 16), border_radius=3)
-        pygame.draw.rect(self.surfaceHD, (52, 146, 235), (barX, barY, barW, 16), border_radius=3)
+        self.DrawHealthBar(drawX, drawY, troop)
 
     def DrawProjectile(self, projectile) -> None:
-        pygame.draw.rect(self.surfaceHD, (6, 6, 6), (projectile.x*4, projectile.y*4, 24, 48), border_radius=2)
+        projectileSurface = pygame.Surface((48, 16), pygame.SRCALPHA)
+        pygame.draw.rect(projectileSurface, (30, 30, 32), (0, 0, 48, 16), border_radius=2)
+        
+        rotatedSurface = pygame.transform.rotate(projectileSurface, -projectile.dir.as_polar()[1])
+        
+        rect = rotatedSurface.get_rect(center=(projectile.x*4, projectile.y*4))
+        
+        self.surfaceHD.blit(rotatedSurface, rect)
