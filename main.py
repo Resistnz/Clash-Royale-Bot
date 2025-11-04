@@ -1,7 +1,8 @@
 from pygame import time
 from clash.game import Game
 from clash.gui import GUI
-from clash.config import TICKS_PER_SECOND
+
+TICKS_PER_SECOND = 60
 
 def main():
     # Create core game instance
