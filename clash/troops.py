@@ -5,6 +5,7 @@ import math
 class TroopType(Enum):
     GIANT = auto()
     SKELETON = auto()
+    KNIGHT = auto()
 
 class Troop():
     def __init__(self, x: int, y: int, t: TroopType, owner):
@@ -12,7 +13,7 @@ class Troop():
         self.y = y
 
         self.speed = 10
-        self.direction = 90 # angle from 0 to 360 degrees
+        self.direction = 90
 
         self.owner = owner
 
@@ -32,6 +33,9 @@ class Troop():
 
         self.dead = False
         self.targetBuildings = True
+
+        # How much it gets influenced by other troops pushing
+        self.weight = 1
 
     def Tick(self, dt: float) -> None:
         if self.dead: 
@@ -61,17 +65,59 @@ class Troop():
                     self.Attack()
 
         if moving:
+            # Calculate separation force from nearby troops
+            separationX, separationY = 0, 0
+            nearbyCount = 0
+            
+            for other in self.owner.game.troops:
+                if other == self or other.dead:
+                    continue
+                    
+                dx = self.x - other.x
+                dy = self.y - other.y
+                distanceSq = dx*dx + dy*dy
+                
+                # Define minimum desired separation distance
+                minDistance = 30
+                
+                if distanceSq < minDistance * minDistance:
+                    # Calculate repulsion strength (stronger when closer)
+                    distance = math.sqrt(distanceSq)
+                    baseStrength = 1.0 - (distance / minDistance)
+                    
+                    weightRatio = other.weight / (self.weight + other.weight)
+                    #weightRatio = 1
+                    pushStrength = baseStrength * weightRatio
+                    
+                    # Normalize the direction vector
+                    if distance > 0:
+                        dx = dx / distance
+                        dy = dy / distance
+                    
+                    separationX += dx * pushStrength
+                    separationY += dy * pushStrength
+                    nearbyCount += 1
+            
+            # Apply separation force if there are nearby troops
+            if nearbyCount > 0:
+                separationStrength = 40
+                separationX = separationX * separationStrength
+                separationY = separationY * separationStrength
+            
+            # Combine movement direction with separation
             rad = math.radians(self.direction)
-            self.x += math.cos(rad) * self.speed * dt
-            self.y -= math.sin(rad) * self.speed * dt
+            moveX = math.cos(rad) * self.speed
+            moveY = -math.sin(rad) * self.speed
+            
+            # Apply both forces
+            self.x += (moveX + separationX) * dt
+            self.y += (moveY + separationY) * dt
 
-    # Only pick a new target once the old one is dead
     def PickTarget(self) -> None:
         if self.target != None:
             if self.target.dead:
                 self.target = None
-
-            return
+                return
 
         closest = None
         closestDist = float('inf')
@@ -110,7 +156,7 @@ class Troop():
         if closestDist <= radius*radius:
             self.target = closest
 
-        if self.targetBuildings:
+        if self.targetBuildings or not self.target:
             self.target = closestBuilding
 
     # Returns True if died
@@ -148,6 +194,25 @@ class Skeleton(Troop):
 
         self.targetBuildings = False
 
+        self.weight = 1
+
+class Knight(Troop):
+    def __init__(self, x: int, y: int, owner):
+        super().__init__(x, y, TroopType.KNIGHT, owner)
+
+        self.speed = 15
+
+        self.maxHealth = 1766
+        self.health = self.maxHealth
+        
+        self.damage = 202
+        self.attackTimer = 0
+        self.attackSpeed = 1.2
+
+        self.targetBuildings = False
+
+        self.weight = 20
+
 class Giant(Troop):
     def __init__(self, x: int, y: int, owner):
         super().__init__(x, y, TroopType.GIANT, owner)
@@ -162,3 +227,5 @@ class Giant(Troop):
         self.attackSpeed = 1/1.5
 
         self.targetBuildings = True
+
+        self.weight = 50

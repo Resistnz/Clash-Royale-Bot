@@ -18,6 +18,7 @@ class GUI:
 
         self.win = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.NOFRAME, pygame.SRCALPHA)
         self.surfaceHD = pygame.Surface((self.SCREEN_WIDTH*4, self.SCREEN_HEIGHT*4), pygame.SRCALPHA)
+        self.shadowLayer = pygame.Surface((self.SCREEN_WIDTH*4, self.SCREEN_HEIGHT*4), pygame.SRCALPHA)
 
         self.bgImage = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "bg.jpg"), 0.5)
         self.shadowImage = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "shadow.png"), (0.4, 0.28))
@@ -30,7 +31,8 @@ class GUI:
 
         self.imagesByTroop = {
             "GIANT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "giant-walk.png"), 0.6),
-            "SKELETON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "skeleton.png"), 2)
+            "SKELETON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "skeleton.png"), 1.5),
+            "KNIGHT":  pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "knight.png"), 1.5)
         }
 
         self.fpsHistory = []
@@ -41,13 +43,21 @@ class GUI:
 
         # Fill with transparent
         self.surfaceHD.fill((0, 0, 0, 0))
+        self.shadowLayer.fill((0, 0, 0, 0))
 
         for tower in towers:
             if tower.dead:
                 self.surfaceHD.blit(self.destroyedTower, (tower.x * 4 - 130, tower.y * 4 - 60))
                 continue
 
-            self.DrawHealthBar(tower.x * 4 - 120, tower.y * 4 + 90, tower)
+            if not tower.active: continue
+
+            drawY = tower.y * 4 + 90
+
+            if not tower.owner.isFocused:
+                drawY -= 170
+
+            self.DrawHealthBar(tower.x * 4 - 120, drawY, tower)
 
         for t in troops:
             self.DrawTroop(t)
@@ -56,8 +66,11 @@ class GUI:
             self.DrawProjectile(p)
 
         scaledHD = pygame.transform.smoothscale_by(self.surfaceHD, 0.25)
-        self.win.blit(scaledHD, (0, 0))
+        scaledShadow = pygame.transform.smoothscale_by(self.shadowLayer, 0.25)
 
+        self.win.blit(scaledShadow, (0, 0))
+        self.win.blit(scaledHD, (0, 0))
+        
         if SHOW_FPS:
             fps = str(int(1 / dt)) if dt > 0 else "N/A"
             font = pygame.font.SysFont('Arial', 30)
@@ -108,10 +121,16 @@ class GUI:
             colour = (217, 33, 51) # Red
             drawImg = self.healthbarRed
 
-        self.surfaceHD.blit(drawImg, (drawX + 20, drawY - 30))
+        # Only draw level if not damaged
+        if owner.health == owner.maxHealth:
+            # Don't even draw level on towers
+            if not hasattr(owner, "active"):
+                self.surfaceHD.blit(drawImg, (drawX + 20, drawY - 30), (0, 0, 60, 100))
+        else:
+            self.surfaceHD.blit(drawImg, (drawX + 20, drawY - 30))
 
-        pygame.draw.rect(self.surfaceHD, (50, 50, 60), (barX, barY, maxWidth, 16), border_radius=3)
-        pygame.draw.rect(self.surfaceHD, colour, (barX, barY, barW, 16), border_radius=3)
+            pygame.draw.rect(self.surfaceHD, (50, 50, 60), (barX, barY, maxWidth, 16), border_radius=3)
+            pygame.draw.rect(self.surfaceHD, colour, (barX, barY, barW, 16), border_radius=3)
 
     def DrawTroop(self, troop) -> None:
         troopImg = self.imagesByTroop[troop.troopType.name]
@@ -126,7 +145,7 @@ class GUI:
 
         scaledShadow = pygame.transform.smoothscale_by(self.shadowImage, width/270)
 
-        self.surfaceHD.blit(scaledShadow, (drawX, drawY + 60))
+        self.shadowLayer.blit(scaledShadow, (drawX, drawY + 60))
         self.surfaceHD.blit(troopImg, (drawX, drawY))
 
         self.DrawHealthBar(drawX, drawY, troop)

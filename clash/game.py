@@ -2,6 +2,7 @@ from typing import List
 from pygame.math import Vector2
 from typing import Optional
 from clash.troops import *
+import random
 
 ELIXIR_PER_SECOND = 1/2.8
 PRINCESS_FIRE_RATE = 1/0.8
@@ -48,9 +49,10 @@ class Tower():
         self.damage = 99
 
         self.target: Optional[Troop] = None
-        self.active = True
+        self.active = active
 
         self.maxHealth = 2786
+        self.range = 130
         self.health = self.maxHealth
         self.dead = False
 
@@ -82,15 +84,22 @@ class Tower():
             dx = troop.x - self.x
             dy = troop.y - self.y
 
-            radius = 100
-
             # Lock on
-            if dx*dx + dy*dy <= (radius*radius):
+            if dx*dx + dy*dy <= (self.range*self.range):
                 self.target = troop
+
+    def Activate(self):
+        self.active = True
+        self.range = 200
 
     def Die(self):
         self.dead = True
         self.active = False
+
+        # Activate king tower
+        for tower in self.owner.game.towers:
+            if tower.owner == self.owner and tower.active == False:
+                tower.Activate()
 
     def TakeDamage(self, attacker: Optional["Troop"], damage: float) -> bool:
         self.health -= damage
@@ -123,17 +132,22 @@ class Game:
 
         self.elixirMultiplier = 1
 
-        self.SpawnTroop(100, 200, Giant, self.players[1])
+        self.SpawnTroop(100, 180, Giant, self.players[1])
 
-        self.SpawnTroop(130, 400, Skeleton, self.players[0])
-        self.SpawnTroop(120, 410, Skeleton, self.players[0])
-        self.SpawnTroop(120, 390, Skeleton, self.players[0])
+        for i in range(15):
+            self.SpawnTroop(120 + random.randrange(-10, 10), 380 + random.randrange(-10, 10), Skeleton, self.players[0])
+
+        self.SpawnTroop(150, 300, Knight, self.players[0])
 
         # Create towers
         self.towers: List[Tower] = [
             Tower(120, 425, blue, self),
             Tower(330, 425, blue, self),
-            Tower(225, 480, blue, self, active=False)
+            Tower(225, 480, blue, self, active=False),
+
+            Tower(120, 130, red, self),
+            Tower(330, 130, red, self),
+            Tower(225, 70, red, self, active=False)
         ]
 
     def AddObserver(self, observer) -> None:
@@ -154,7 +168,8 @@ class Game:
     
     # TODO: This is ass
     def KillTroop(self, troop):
-        self.troops.remove(troop)
+        if troop in self.troops:
+            self.troops.remove(troop)
 
     def KillProjectile(self, projectile):
         self.projectiles.remove(projectile)
@@ -167,6 +182,10 @@ class Game:
         
         for p in self.players:
             p.elixir += ELIXIR_PER_SECOND * dt
+
+        # Sort for z-ordering
+        # Remove this if its slow
+        self.troops.sort(key=lambda x: x.y)
 
         for troop in self.troops:
             troop.Tick(dt)
