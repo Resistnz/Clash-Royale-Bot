@@ -29,7 +29,10 @@ class Troop():
         
         self.damage = 253
         self.attackTimer = 0
-        self.attackSpeed = 1/1.5
+        self.attackSpeed = 1/1.5 # 
+
+        self.initialAttackTimer = 0
+        self.initialAttackSpeed = 1/0.5
 
         self.dead = False
         self.targetBuildings = True
@@ -59,7 +62,9 @@ class Troop():
             if dx*dx + dy*dy < attackRadius*attackRadius:
                 moving = False
 
-                if self.attackTimer == 1:
+                self.initialAttackTimer = min(1, self.initialAttackTimer + self.initialAttackSpeed * dt)
+
+                if self.attackTimer == 1 and self.initialAttackTimer == 1:
                     self.attackTimer = 0
 
                     self.Attack()
@@ -125,6 +130,8 @@ class Troop():
         closestBuilding = None
         closestBuildingDist = float('inf')
 
+        initialTarget = self.target
+
         for troop in self.owner.game.troops:
             if troop.owner == self.owner: continue
             if troop.dead: continue
@@ -158,6 +165,10 @@ class Troop():
 
         if self.targetBuildings or not self.target:
             self.target = closestBuilding
+
+        # Update initialAttack timer if changed target
+        if initialTarget != self.target:
+            self.initialAttackTimer = 0
 
     # Returns True if died
     def TakeDamage(self, attacker: Optional["Troop"], damage: float) -> bool:
@@ -214,6 +225,23 @@ class Knight(Troop):
         self.weight = 20
 
 class Giant(Troop):
+    def __init__(self, x: int, y: int, owner):
+        super().__init__(x, y, TroopType.GIANT, owner)
+
+        self.speed = 10
+
+        self.maxHealth = 4090
+        self.health = self.maxHealth
+        
+        self.damage = 253
+        self.attackTimer = 0
+        self.attackSpeed = 1/1.5
+
+        self.targetBuildings = True
+
+        self.weight = 50
+
+class MiniPekka(Troop):
     def __init__(self, x: int, y: int, owner):
         super().__init__(x, y, TroopType.GIANT, owner)
 

@@ -29,23 +29,34 @@ class GUI:
 
         self.destroyedTower = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "destroyed.png"), 2.3)
 
+        self.elixirBubble = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "elixir.png"), 0.5)
+
+        self.elixirBubbles = [pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "3.png"), 1.8)]
+
         self.imagesByTroop = {
             "GIANT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "giant-walk.png"), 0.6),
             "SKELETON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "skeleton.png"), 1.5),
-            "KNIGHT":  pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "knight.png"), 1.5)
+            "KNIGHT":  pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "knight.png"), 1.5),
+        }
+
+        self.cardImages = {
+            "KNIGHT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "knight-card.webp"), 0.6),
+            "GIANT": pygame.image.load(self.IMG_PATH + "giant-card.png"),
+            "SKARMY": pygame.image.load(self.IMG_PATH + "skarmy-card.png"),
+            "SKELETON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "skeletons-card.png"), 0.6)
         }
 
         self.fpsHistory = []
 
     # Return False if UI has terminated this frame
-    def Tick(self, dt, troops, projectiles, towers) -> bool:
+    def Tick(self, dt, game) -> bool:
         self.win.blit(self.bgImage, (-415, 0))
 
         # Fill with transparent
         self.surfaceHD.fill((0, 0, 0, 0))
         self.shadowLayer.fill((0, 0, 0, 0))
 
-        for tower in towers:
+        for tower in game.towers:
             if tower.dead:
                 self.surfaceHD.blit(self.destroyedTower, (tower.x * 4 - 130, tower.y * 4 - 60))
                 continue
@@ -59,11 +70,13 @@ class GUI:
 
             self.DrawHealthBar(tower.x * 4 - 120, drawY, tower)
 
-        for t in troops:
+        for t in game.troops:
             self.DrawTroop(t)
 
-        for p in projectiles:
+        for p in game.projectiles:
             self.DrawProjectile(p)
+
+        self.DrawCards(game.GetFocusedPlayer())
 
         scaledHD = pygame.transform.smoothscale_by(self.surfaceHD, 0.25)
         scaledShadow = pygame.transform.smoothscale_by(self.shadowLayer, 0.25)
@@ -132,8 +145,23 @@ class GUI:
             pygame.draw.rect(self.surfaceHD, (50, 50, 60), (barX, barY, maxWidth, 16), border_radius=3)
             pygame.draw.rect(self.surfaceHD, colour, (barX, barY, barW, 16), border_radius=3)
 
+    def DrawCards(self, player):
+        for i in range(4):
+            card = player.deck[i]
+
+            if card.cardName not in self.cardImages: continue
+
+            yOffset = 2392
+
+            if self.cardImages[card.cardName].get_height() == 420:
+                yOffset -= 60
+
+            self.surfaceHD.blit(self.cardImages[card.cardName], (456 + 304*i, yOffset)) #760
+            self.surfaceHD.blit(self.elixirBubbles[0], (534 + 304*i, 2630)) # 838
+
     def DrawTroop(self, troop) -> None:
         troopImg = self.imagesByTroop[troop.troopType.name]
+        scaledShadow = pygame.transform.smoothscale_by(self.shadowImage, troopImg.get_width()/270)
 
         troopImg = pygame.transform.rotate(troopImg, troop.direction - 90)
 
@@ -143,9 +171,7 @@ class GUI:
         drawX = troop.x * 4 - width // 2
         drawY = troop.y * 4 - height // 2
 
-        scaledShadow = pygame.transform.smoothscale_by(self.shadowImage, width/270)
-
-        self.shadowLayer.blit(scaledShadow, (drawX, drawY + 60))
+        self.shadowLayer.blit(scaledShadow, (drawX + width/8, drawY + height/2))
         self.surfaceHD.blit(troopImg, (drawX, drawY))
 
         self.DrawHealthBar(drawX, drawY, troop)

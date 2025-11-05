@@ -2,6 +2,7 @@ from typing import List
 from pygame.math import Vector2
 from typing import Optional
 from clash.troops import *
+from clash.cards import *
 import random
 
 ELIXIR_PER_SECOND = 1/2.8
@@ -113,13 +114,35 @@ class Tower():
 class Player():
     def __init__(self, game, isFocused):
         self.isFocused = isFocused
-        self.game = game
+        self.game: "Game" = game
         
-        self.elixir: float = 0
+        self.elixir: float = 5
+
+        self.deck: List[Card] = [
+            KnightCard(),
+            GiantCard(),
+            SkeletonCard(),
+            SkarmyCard()
+        ]
+
+        for card in self.deck:
+            card.SetOwner(self)
+
+    def PlaceCard(self, x, y, index):
+        cardToPlace: Card = self.deck[index]
+
+        if cardToPlace.Place(x, y):
+            self.elixir -= cardToPlace.cost
+
+            self.deck.remove(cardToPlace)
+            self.deck.append(cardToPlace)
+
+    def Tick(self, dt):
+        pass
 
 class Game:
-    def __init__(self):
-        blue, red = Player(self, True), Player(self, False)
+    def __init__(self, blueClass, redClass):
+        blue, red = blueClass(self, True), redClass(self, False)
 
         self.players: List[Player] = [blue, red]
         self.troops: List[Troop] = []
@@ -132,12 +155,14 @@ class Game:
 
         self.elixirMultiplier = 1
 
-        self.SpawnTroop(100, 180, Giant, self.players[1])
+        self.placed = False
 
-        for i in range(15):
-            self.SpawnTroop(120 + random.randrange(-10, 10), 380 + random.randrange(-10, 10), Skeleton, self.players[0])
+        # self.SpawnTroop(100, 180, Giant, self.players[1])
 
-        self.SpawnTroop(150, 300, Knight, self.players[0])
+        # for i in range(15):
+        #     self.SpawnTroop(120 + random.randrange(-10, 10), 380 + random.randrange(-10, 10), Skeleton, self.players[0])
+
+        # self.SpawnTroop(150, 300, Knight, self.players[0])
 
         # Create towers
         self.towers: List[Tower] = [
@@ -149,6 +174,12 @@ class Game:
             Tower(330, 130, red, self),
             Tower(225, 70, red, self, active=False)
         ]
+
+    def GetFocusedPlayer(self) -> Player:
+        if self.players[0].isFocused: 
+            return self.players[0]
+        else: 
+            return self.players[1]
 
     def AddObserver(self, observer) -> None:
         self.observers.append(observer)
@@ -181,11 +212,14 @@ class Game:
         self.lifetime += dt
         
         for p in self.players:
-            p.elixir += ELIXIR_PER_SECOND * dt
+            p.elixir = min(10, p.elixir + ELIXIR_PER_SECOND * dt)
 
         # Sort for z-ordering
         # Remove this if its slow
         self.troops.sort(key=lambda x: x.y)
+
+        for player in self.players:
+            player.Tick(dt)
 
         for troop in self.troops:
             troop.Tick(dt)
@@ -198,4 +232,4 @@ class Game:
 
         # Notify all observers
         for observer in self.observers:
-            observer.Tick(dt, self.troops, self.projectiles, self.towers)
+            observer.Tick(dt, self)
