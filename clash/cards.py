@@ -33,6 +33,25 @@ class GiantCard(Card):
     def __init__(self):
         super().__init__(Giant, 5)
 
+class MiniPekkaCard(Card):
+    cardName = "MINI_PEKKA"
+
+    def __init__(self):
+        super().__init__(MiniPekka, 4)
+
+class BabyDragonCard(Card):
+    cardName = "BABY_DRAGON"
+
+    def __init__(self):
+        super().__init__(BabyDragon, 4)
+
+class FireballCard(Card):
+    cardName = "FIREBALL"
+
+    def __init__(self):
+        super().__init__(Fireball, 4)
+
+
 class SkeletonCard(Card):
     cardName = "SKELETON"
 

@@ -37,8 +37,35 @@ class Projectile():
                 
                 self.owner.game.KillProjectile(self)
 
+class AOEProjectile(Projectile):
+    def __init__(self, x, y, owner, dir, speed, damage, targetPos: Vector2, radius: float):
+        super().__init__(x, y, owner, dir, speed, damage)
+
+        self.targetPos = targetPos
+        self.radius = radius
+
+    def Tick(self, dt):
+        self.x += self.dir.x * dt * self.speed
+        self.y += self.dir.y * dt * self.speed
+
+        if Vector2.distance_to(self.targetPos, (self.x, self.y)) <= 5:
+            # Damage all troops in the radius
+            for troop in list(self.owner.owner.game.troops):
+                if troop.owner == self.owner: continue
+
+                if Vector2.distance_to(self.targetPos, (troop.x, troop.y)) <= self.radius:
+                    troop.TakeDamage(None, self.damage)
+
+            for tower in list(self.owner.owner.game.towers):
+                if tower.owner == self.owner: continue
+
+                if Vector2.distance_to(self.targetPos, (tower.x, tower.y)) <= self.radius:
+                    tower.TakeDamage(None, self.damage)
+
+            self.owner.owner.game.KillProjectile(self)
+
 class Tower():
-    def __init__(self, x, y, owner, game, active=True):
+    def __init__(self, x, y, owner, game, active=True, isKing=False):
         self.x = x
         self.y = y
 
@@ -56,6 +83,11 @@ class Tower():
         self.range = 130
         self.health = self.maxHealth
         self.dead = False
+
+        self.isKing = isKing
+
+        if isKing:
+            self.range = 200
 
     def Tick(self, dt: float) -> None:
         if not self.active: return
@@ -91,7 +123,6 @@ class Tower():
 
     def Activate(self):
         self.active = True
-        self.range = 200
 
     def Die(self):
         self.dead = True
@@ -99,7 +130,7 @@ class Tower():
 
         # Activate king tower
         for tower in self.owner.game.towers:
-            if tower.owner == self.owner and tower.active == False:
+            if tower.owner == self.owner and tower.isKing:
                 tower.Activate()
 
     def TakeDamage(self, attacker: Optional["Troop"], damage: float) -> bool:
@@ -119,14 +150,22 @@ class Player():
         self.elixir: float = 5
 
         self.deck: List[Card] = [
+            FireballCard(),
+            BabyDragonCard(),
             KnightCard(),
             GiantCard(),
             SkeletonCard(),
-            SkarmyCard()
+            SkarmyCard(),
+            MiniPekkaCard()    
         ]
+        #random.shuffle(self.deck)
 
         for card in self.deck:
             card.SetOwner(self)
+
+        self.kingTower = None
+
+        self.owner = self
 
     def PlaceCard(self, x, y, index):
         cardToPlace: Card = self.deck[index]
@@ -134,7 +173,13 @@ class Player():
         if cardToPlace.Place(x, y):
             self.elixir -= cardToPlace.cost
 
+            # Move this guy to the back but keep top 4 in order
+            i = self.deck.index(cardToPlace)
             self.deck.remove(cardToPlace)
+
+            card5 = self.deck.pop(3)
+
+            self.deck.insert(i, card5)
             self.deck.append(cardToPlace)
 
     def Tick(self, dt):
@@ -175,6 +220,9 @@ class Game:
             Tower(225, 70, red, self, active=False)
         ]
 
+        blue.kingTower = self.towers[2]
+        red.kingTower = self.towers[5]
+
     def GetFocusedPlayer(self) -> Player:
         if self.players[0].isFocused: 
             return self.players[0]
@@ -192,8 +240,16 @@ class Game:
 
         self.projectiles.append(p)
 
+    def SpawnAOEProjectile(self, x, y, owner, dir, speed, damage, targetPos, radius) -> None:
+        p = AOEProjectile(x, y, owner, dir, speed, damage, targetPos, radius)
+
+        self.projectiles.append(p)
+
     def SpawnTroop(self, x, y, troopClass, owner):
         troop = troopClass(x, y, owner)
+
+        # Don't add any spells
+        if troopClass in [Fireball]: return
 
         self.troops.append(troop)
     

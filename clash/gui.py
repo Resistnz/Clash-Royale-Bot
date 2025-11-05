@@ -2,7 +2,7 @@ import os
 import pygame
 from pygame import gfxdraw
 
-SHOW_FPS = False
+SHOW_FPS = True
 
 pygame.init()
 
@@ -29,24 +29,30 @@ class GUI:
 
         self.destroyedTower = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "destroyed.png"), 2.3)
 
-        self.elixirBubble = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "elixir.png"), 0.5)
-
-        self.elixirBubbles = [pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "3.png"), 1.8)]
+        self.elixirBubble = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "elixir.png"), 0.9)
 
         self.imagesByTroop = {
             "GIANT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "giant-walk.png"), 0.6),
             "SKELETON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "skeleton.png"), 1.5),
-            "KNIGHT":  pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "knight.png"), 1.5),
+            "KNIGHT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "knight.png"), 1.5),
+            "MINI_PEKKA": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "mini-pekka.png"), 1.2),
+            "BABY_DRAGON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "baby-dragon.png"), 2)
         }
 
         self.cardImages = {
             "KNIGHT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "knight-card.webp"), 0.6),
             "GIANT": pygame.image.load(self.IMG_PATH + "giant-card.png"),
             "SKARMY": pygame.image.load(self.IMG_PATH + "skarmy-card.png"),
-            "SKELETON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "skeletons-card.png"), 0.6)
+            "SKELETON": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "skeletons-card.png"), 0.6),
+            "MINI_PEKKA": pygame.image.load(self.IMG_PATH + "mini-pekka-card.png"),
+            "BABY_DRAGON": pygame.image.load(self.IMG_PATH + "baby-dragon-card.png"),
+            "FIREBALL": pygame.image.load(self.IMG_PATH + "fireball-card.png"),
         }
 
         self.fpsHistory = []
+
+        self.font = pygame.font.Font(self.IMG_PATH + 'font.otf', 30)
+        self.largeFont = pygame.font.Font(self.IMG_PATH + 'font.otf', 60)
 
     # Return False if UI has terminated this frame
     def Tick(self, dt, game) -> bool:
@@ -86,7 +92,6 @@ class GUI:
         
         if SHOW_FPS:
             fps = str(int(1 / dt)) if dt > 0 else "N/A"
-            font = pygame.font.SysFont('Arial', 30)
             
             self.fpsHistory.append(1 / dt if dt > 0 else 0)
             if len(self.fpsHistory) > 10:
@@ -95,7 +100,7 @@ class GUI:
             avgFPS = sum(self.fpsHistory) / len(self.fpsHistory)
             fps = str(int(avgFPS))
 
-            fpsSurface = font.render(fps, True, (255, 255, 255))
+            fpsSurface = self.font.render(fps, True, (255, 255, 255))
             self.win.blit(fpsSurface, (10, 10))
 
         # Handle closing the window
@@ -157,7 +162,26 @@ class GUI:
                 yOffset -= 60
 
             self.surfaceHD.blit(self.cardImages[card.cardName], (456 + 304*i, yOffset)) #760
-            self.surfaceHD.blit(self.elixirBubbles[0], (534 + 304*i, 2630)) # 838
+            self.surfaceHD.blit(self.elixirBubble, (524 + 304*i, 2613)) # 838
+
+            elixirText = self.largeFont.render(str(card.cost), True, (230, 230, 230))
+            self.surfaceHD.blit(elixirText, (590 + 304*i, 2663))
+
+        # Draw the next up card
+        card = player.deck[4]
+
+        smallImg = pygame.transform.smoothscale_by(self.cardImages[card.cardName], 0.6)
+        smallElixir = pygame.transform.smoothscale_by(self.elixirBubble, 0.6)
+
+        yOffset = 2668
+        if self.cardImages[card.cardName].get_height() == 420:
+            yOffset -= 36
+
+        self.surfaceHD.blit(smallImg, (148, yOffset)) #760
+        self.surfaceHD.blit(smallElixir, (190, 2800)) # 838
+
+        elixirText = self.font.render(str(card.cost), True, (230, 230, 230))
+        self.surfaceHD.blit(elixirText, (230, 2830))
 
     def DrawTroop(self, troop) -> None:
         troopImg = self.imagesByTroop[troop.troopType.name]
@@ -171,17 +195,35 @@ class GUI:
         drawX = troop.x * 4 - width // 2
         drawY = troop.y * 4 - height // 2
 
-        self.shadowLayer.blit(scaledShadow, (drawX + width/8, drawY + height/2))
+        shadowY = drawY + height/2
+
+        if troop.air:
+            shadowY += 40
+
+        if troop.direction > 180:
+            shadowY -= height
+
+            if troop.air:
+                shadowY -= 40
+
+        self.shadowLayer.blit(scaledShadow, (drawX + width/8, shadowY))
         self.surfaceHD.blit(troopImg, (drawX, drawY))
 
         self.DrawHealthBar(drawX, drawY, troop)
 
     def DrawProjectile(self, projectile) -> None:
-        projectileSurface = pygame.Surface((48, 16), pygame.SRCALPHA)
-        pygame.draw.rect(projectileSurface, (30, 30, 32), (0, 0, 48, 16), border_radius=2)
-        
-        rotatedSurface = pygame.transform.rotate(projectileSurface, -projectile.dir.as_polar()[1])
-        
-        rect = rotatedSurface.get_rect(center=(projectile.x*4, projectile.y*4))
-        
-        self.surfaceHD.blit(rotatedSurface, rect)
+        if hasattr(projectile, "radius"):
+            projectileImage = pygame.Surface((64, 64), pygame.SRCALPHA)
+            pygame.draw.circle(projectileImage, (255, 0, 0, 128), (32, 32), 32)
+
+            self.surfaceHD.blit(projectileImage, (projectile.x*4 - 32, projectile.y*4 - 32))
+
+        else:
+            projectileSurface = pygame.Surface((48, 16), pygame.SRCALPHA)
+            pygame.draw.rect(projectileSurface, (30, 30, 32), (0, 0, 48, 16), border_radius=2)
+            
+            rotatedSurface = pygame.transform.rotate(projectileSurface, -projectile.dir.as_polar()[1])
+            
+            rect = rotatedSurface.get_rect(center=(projectile.x*4, projectile.y*4))
+            
+            self.surfaceHD.blit(rotatedSurface, rect)

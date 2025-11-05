@@ -1,13 +1,13 @@
 from pygame import time
 from clash.game import Game
 from clash.gui import GUI
-from agent import Agent
+from agent import *
 
 TICKS_PER_SECOND = 60
 
 def main():
     # Create core game instance
-    game = Game(Agent, Agent)
+    game = Game(BlueAgent, RedAgent)
     
     # Create and attach GUI observer
     gui = GUI()
