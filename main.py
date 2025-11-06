@@ -3,11 +3,12 @@ from clash.game import Game
 from clash.gui import GUI
 from agent import *
 
-TICKS_PER_SECOND = 60
+TICKS_PER_SECOND = 30
+TIMESCALE = 1
 
 def main():
     # Create core game instance
-    game = Game(BlueAgent, RedAgent)
+    game = Game(Agent, Agent)
     
     # Create and attach GUI observer
     gui = GUI()
@@ -16,7 +17,8 @@ def main():
     # Main game loop
     clock = time.Clock()
     while game.running:
-        dt = clock.tick(TICKS_PER_SECOND) / 1000
+        dt = clock.tick(TICKS_PER_SECOND) / 1000 * TIMESCALE
+        #dt = 1
         
         game.Tick(dt)
 

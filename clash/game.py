@@ -123,6 +123,7 @@ class Tower():
 
     def Activate(self):
         self.active = True
+        print("activated")
 
     def Die(self):
         self.dead = True
@@ -158,7 +159,8 @@ class Player():
             SkarmyCard(),
             MiniPekkaCard()    
         ]
-        #random.shuffle(self.deck)
+        
+        random.shuffle(self.deck)
 
         for card in self.deck:
             card.SetOwner(self)

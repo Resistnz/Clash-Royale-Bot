@@ -9,6 +9,7 @@ class Agent(Player):
 
     # Best ai of all time fr
     def Tick(self, dt):
+        #return
         if self.elixir >= self.deck[self.choice].cost:
             xPos, yPos = random.randrange(50, 400), random.randrange(80, 291)
 

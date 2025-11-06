@@ -30,6 +30,9 @@ class GUI:
         self.destroyedTower = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "destroyed.png"), 2.3)
 
         self.elixirBubble = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "elixir.png"), 0.9)
+        self.elixirBar = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "elixir-bar.png"), 1.1)
+        self.elixirBarBlank = pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "elixir-bar-blank.png"), 1.1)
+        self.brown = pygame.image.load(self.IMG_PATH + 'brown.png')
 
         self.imagesByTroop = {
             "GIANT": pygame.transform.smoothscale_by(pygame.image.load(self.IMG_PATH + "giant-walk.png"), 0.6),
@@ -83,6 +86,7 @@ class GUI:
             self.DrawProjectile(p)
 
         self.DrawCards(game.GetFocusedPlayer())
+        self.DrawElixirBar(game.GetFocusedPlayer())
 
         scaledHD = pygame.transform.smoothscale_by(self.surfaceHD, 0.25)
         scaledShadow = pygame.transform.smoothscale_by(self.shadowLayer, 0.25)
@@ -149,6 +153,34 @@ class GUI:
 
             pygame.draw.rect(self.surfaceHD, (50, 50, 60), (barX, barY, maxWidth, 16), border_radius=3)
             pygame.draw.rect(self.surfaceHD, colour, (barX, barY, barW, 16), border_radius=3)
+
+    def DrawElixirBar(self, player):
+        self.win.blit(self.brown, (126, 707))
+        self.win.blit(self.brown, (131, 684))
+
+        for i in range(10):
+            self.win.blit(self.elixirBarBlank, (123 + i * 29, 690))
+
+        for i in range(int(player.elixir)):
+            self.win.blit(self.elixirBar, (125 + i * 29, 692))
+
+        amountLeft = player.elixir % 1
+
+        if amountLeft > 0:
+            scaled = pygame.transform.smoothscale_by(self.elixirBar, 4)
+
+            full_w, full_h = scaled.get_size()
+            part_w = full_w * amountLeft
+            if part_w > 0:
+                part = scaled.subsurface((0, 0, part_w, full_h)).copy()
+                part.set_alpha(128)
+                self.surfaceHD.blit(part, (125 * 4 + int(player.elixir) * 29 * 4, 692 * 4))
+
+        bigger = pygame.transform.smoothscale_by(self.elixirBubble, 1.2)
+        self.surfaceHD.blit(bigger, (95*4, 676*4))
+
+        elixirText = self.largeFont.render(str(int(player.elixir)), True, (230, 230, 230))
+        self.surfaceHD.blit(elixirText, (115*4, 695*4))
 
     def DrawCards(self, player):
         for i in range(4):

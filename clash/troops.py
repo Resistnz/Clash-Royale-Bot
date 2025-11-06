@@ -3,6 +3,14 @@ from typing import Optional
 import math
 from pygame.math import Vector2
 
+RIVER_Y = 305
+
+OBSTACLES = [
+    (54, 291, 50, 30), # Left river
+    (136, 290, 180, 30), # Middle river
+    (350, 291, 50, 30) # Right
+    ]
+
 class TroopType(Enum):
     GIANT = auto()
     SKELETON = auto()
@@ -49,6 +57,13 @@ class Troop():
         self.air = False
         self.canHitAir = False
 
+    def InObstacle(self, xPos, yPos, topleftX, topleftY, w, h):
+        if xPos < topleftX or xPos > topleftX + w:
+            return False
+        if yPos < topleftY or yPos > topleftY + h:
+            return False
+        return True
+
     def Tick(self, dt: float) -> None:
         if self.dead: 
             return    
@@ -62,7 +77,18 @@ class Troop():
         if self.target:
             dx = self.target.x - self.x
             dy = self.target.y - self.y
-            self.direction = math.degrees(math.atan2(-dy, dx))
+
+            # Check if we gotta go accross the bridge
+            if (self.target.y > RIVER_Y and self.y < RIVER_Y) or (self.target.y < RIVER_Y and self.y > RIVER_Y):
+                bridgeX = 120
+
+                if self.target.x > 225:
+                    bridgeX = 330
+
+                self.direction = math.degrees(math.atan2(-(RIVER_Y - self.y), bridgeX - self.x))
+
+            else:
+                self.direction = math.degrees(math.atan2(-dy, dx))
 
             # In range
             if dx*dx + dy*dy < self.attackRadius*self.attackRadius:
@@ -117,18 +143,31 @@ class Troop():
             
             # Combine movement direction with separation
             rad = math.radians(self.direction)
-            moveX = math.cos(rad) * self.speed
-            moveY = -math.sin(rad) * self.speed
-            
+            moveX = (math.cos(rad) * self.speed + separationX) * dt
+            moveY = (-math.sin(rad) * self.speed + separationY) * dt
+
+            x = self.x + moveX
+            y = self.y + moveY
+
+            for o in OBSTACLES:
+                if self.InObstacle(x, y, *o):
+                    moveY = 0
+                    break
+
+            for t in self.owner.game.towers:
+                if self.InObstacle(x, y, t.x - 20, t.y - 20, 40, 40):
+                    moveY = 0
+                    moveX = self.speed*dt
+                    break
+
             # Apply both forces
-            self.x += (moveX + separationX) * dt
-            self.y += (moveY + separationY) * dt
+            self.x += moveX
+            self.y += moveY
 
     def PickTarget(self) -> None:
         if self.target != None:
             if self.target.dead:
                 self.target = None
-                return
 
         closest = None
         closestDist = float('inf')
