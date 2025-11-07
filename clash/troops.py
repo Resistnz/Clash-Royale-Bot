@@ -338,7 +338,6 @@ class BabyDragon(Troop):
     def Attack(self) -> None:
         if not self.target: return
 
-        #self.target.TakeDamage(self, self.damage)
         dx, dy = self.target.x - self.x, self.target.y - self.y
 
         self.owner.game.SpawnAOEProjectile(self.x, self.y, self, Vector2(dx, dy).normalize(), 100, self.damage, Vector2(self.target.x, self.target.y), 45) #x, y, owner, dir, speed, damage, targetPos, radius

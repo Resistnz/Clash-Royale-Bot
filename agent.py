@@ -39,3 +39,7 @@ class BlueAgent(Player):
             self.PlaceCard(100, 240, 0)
 
             self.done = True
+
+class NoAgent(Player):
+    def __init__(self, game, isFocused):
+        super().__init__(game, isFocused)

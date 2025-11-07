@@ -129,6 +129,9 @@ class Tower():
         self.dead = True
         self.active = False
 
+        if self.isKing:
+            self.game.GameOver()
+
         # Activate king tower
         for tower in self.owner.game.towers:
             if tower.owner == self.owner and tower.isKing:
@@ -215,11 +218,11 @@ class Game:
         self.towers: List[Tower] = [
             Tower(120, 425, blue, self),
             Tower(330, 425, blue, self),
-            Tower(225, 480, blue, self, active=False),
+            Tower(225, 480, blue, self, active=False, isKing=True),
 
             Tower(120, 130, red, self),
             Tower(330, 130, red, self),
-            Tower(225, 70, red, self, active=False)
+            Tower(225, 70, red, self, active=False, isKing=True)
         ]
 
         blue.kingTower = self.towers[2]
@@ -263,11 +266,19 @@ class Game:
     def KillProjectile(self, projectile):
         self.projectiles.remove(projectile)
 
+    def GameOver(self):
+        print("Game over!")
+        self.running = False
+
     def Tick(self, dt: float) -> None:
         if not self.running:
             return
         
         self.lifetime += dt
+
+        if self.lifetime > 180:
+            self.GameOver()
+            return
         
         for p in self.players:
             p.elixir = min(10, p.elixir + ELIXIR_PER_SECOND * dt)
@@ -287,7 +298,3 @@ class Game:
 
         for tower in self.towers:
             tower.Tick(dt)
-
-        # Notify all observers
-        for observer in self.observers:
-            observer.Tick(dt, self)

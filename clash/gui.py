@@ -106,8 +106,15 @@ class GUI:
 
             fpsSurface = self.font.render(fps, True, (255, 255, 255))
             self.win.blit(fpsSurface, (10, 10))
+        
+        self.ProcessEvents()
 
-        # Handle closing the window
+        pygame.display.flip()
+
+        return True
+    
+    # Handle closing the window
+    def ProcessEvents(self):
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 quit()
@@ -121,10 +128,6 @@ class GUI:
             if e.type == pygame.MOUSEBUTTONDOWN:
                 x, y = pygame.mouse.get_pos()
                 print(f"Mouse clicked at: ({x}, {y})")
-        
-        pygame.display.flip()
-
-        return True
     
     def DrawHealthBar(self, drawX, drawY, owner) -> None:
         maxWidth = 100
